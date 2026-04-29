@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyFlow — Rastreador de Estudos</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;600;700;800&family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+/* ===== RESET & VARIABLES ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f0ede8;
+  --bg2: #e8e4dd;
+  --surface: #ffffff;
+  --surface2: #f7f5f0;
+  --border: #d9d4cc;
+  --text: #1a1714;
+  --text2: #6b6560;
+  --text3: #9b958e;
+  --accent: #d4522a;
+  --accent2: #e8834f;
+  --accent3: #2a5bd4;
+  --green: #2a9d4a;
+  --yellow: #d4a52a;
+  --red: #d42a2a;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+  --radius: 16px;
+  --radius-sm: 8px;
+  --transition: 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+
+[data-theme="dark"] {
+  --bg: #0f0e0d;
+  --bg2: #1a1815;
+  --surface: #201e1b;
+  --surface2: #2a2724;
+  --border: #3a3732;
+  --text: #f0ede8;
+  --text2: #a09890;
+  --text3: #6b6560;
+  --shadow: 0 2px 12px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+/* ===== BASE ===== */
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Roboto', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background var(--transition), color var(--transition);
+  overflow-x: hidden;
+}
+
+/* ===== NOISE TEXTURE OVERLAY ===== */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 999;
+  opacity: 0.4;
+}
+
+/* ===== HEADER ===== */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  transition: background var(--transition);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-mark {
+  width: 36px;
+  height: 36px;
+  background: var(--accent);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-family: 'Roboto Slab', serif;
+  font-weight: 800;
+  font-size: 16px;
+  transform: rotate(-3deg);
+  transition: transform 0.3s ease;
+}
+.logo:hover .logo-mark { transform: rotate(3deg); }
+
+.logo h1 {
+  font-family: 'Roboto Slab', serif;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: -0.5px;
+}
+.logo span { color: var(--accent); }
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.streak-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #ff6b35, #f7c59f);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: white;
+  font-family: 'Roboto Slab', serif;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212,82,42,0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(212,82,42,0); }
+}
+
+.btn-icon {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface2);
+  color: var(--text2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all var(--transition);
+}
+.btn-icon:hover { background: var(--surface); border-color: var(--accent); color: var(--accent); transform: scale(1.05); }
+
+/* ===== NAV TABS ===== */
+.nav-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 16px 32px 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nav-tabs::-webkit-scrollbar { display: none; }
+
+.nav-tab {
+  padding: 10px 20px;
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  border: none;
+  background: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all var(--transition);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.nav-tab:hover { color: var(--text); }
+.nav-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ===== MAIN LAYOUT ===== */
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.tab-content { display: none; animation: fadeIn 0.3s ease; }
+.tab-content.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== DASHBOARD GRID ===== */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.metric-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+.metric-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 80px; height: 80px;
+  border-radius: 0 0 0 80px;
+  opacity: 0.08;
+}
+.metric-card:nth-child(1)::before { background: var(--accent); }
+.metric-card:nth-child(2)::before { background: var(--accent3); }
+.metric-card:nth-child(3)::before { background: var(--green); }
+.metric-card:nth-child(4)::before { background: var(--yellow); }
+.metric-card:nth-child(5)::before { background: var(--accent2); }
+
+.metric-icon {
+  font-size: 22px;
+  margin-bottom: 12px;
+}
+
+.metric-value {
+  font-family: 'Roboto Slab', serif;
+  font-weight: 800;
+  font-size: 32px;
+  line-height: 1;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+
+.metric-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.metric-sub {
+  font-size: 12px;
+  color: var(--text3);
+  margin-top: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Focus meter */
+.focus-meter {
+  margin-top: 8px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.focus-meter-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+  transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ===== CHART ===== */
+.chart-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 28px;
+}
+
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.chart-title {
+  font-family: 'Roboto Slab', serif;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.chart-wrapper {
+  position: relative;
+  height: 160px;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.bar-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bar {
+  width: 100%;
+  max-width: 40px;
+  border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, var(--accent2), var(--accent));
+  transition: height 0.8s cubic-bezier(0.4,0,0.2,1);
+  cursor: pointer;
+  position: relative;
+}
+.bar:hover { opacity: 0.8; }
+.bar:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: var(--bg);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.bar-label {
+  font-size: 10px;
+  color: var(--text3);
+  text-align: center;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 140px;
+  color: var(--text3);
+  font-size: 14px;
+}
+
+/* ===== FORM ===== */
+.form-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+}
+
+.form-title {
+  font-family: 'Roboto Slab', serif;
+  font-weight: 800;
+  font-size: 22px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.form-title .edit-badge {
+  font-size: 12px;
+  background: var(--accent3);
+  color: white;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+  font-family: 'Roboto', sans-serif;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.form-group.full { grid-column: 1/-1; }
+
+label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+input, textarea, select {
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+  padding: 10px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  transition: all var(--transition);
+  width: 100%;
+  outline: none;
+  appearance: none;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(212,82,42,0.12);
+  background: var(--surface);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 90px;
+}
+
+.time-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.time-inputs input {
+  text-align: center;
+}
+
+.time-label {
+  font-size: 11px;
+  color: var(--text3);
+  text-align: center;
+  margin-top: 2px;
+}
+
+/* Focus selector */
+.focus-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.focus-option {
+  display: none;
+}
+
+.focus-option + label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text2);
+  background: var(--surface2);
+}
+
+.focus-option + label .focus-emoji { font-size: 20px; }
+.focus-option + label:hover { border-color: var(--accent); color: var(--text); }
+.focus-option:checked + label {
+  border-color: var(--accent);
+  background: rgba(212,82,42,0.08);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Buttons */
+.btn-primary {
+  padding: 12px 28px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: 'Roboto Slab', serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.2px;
+}
+.btn-primary:hover { background: #c04020; transform: translateY(-1px); box-shadow: var(--shadow); }
+.btn-primary:active { transform: translateY(0); }
+
+.btn-secondary {
+  padding: 12px 20px;
+  background: transparent;
+  color: var(--text2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.btn-secondary:hover { background: var(--surface2); color: var(--text); }
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+/* ===== HISTORY ===== */
+.history-controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.search-input-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.search-input-wrapper::before {
+  content: '🔍';
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.search-input-wrapper input {
+  padding-left: 36px;
+}
+
+.session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.session-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  transition: all var(--transition);
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.session-card:hover { box-shadow: var(--shadow); transform: translateX(4px); }
+
+.session-focus-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.focus-low { background: var(--red); }
+.focus-medium { background: var(--yellow); }
+.focus-high { background: var(--green); }
+
+.session-body { flex: 1; min-width: 0; }
+
+.session-theme {
+  font-family: 'Roboto Slab', serif;
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-desc {
+  font-size: 13px;
+  color: var(--text2);
+  margin-bottom: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.session-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.meta-tag {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 12px;
+  background: var(--surface2);
+  color: var(--text2);
+  border: 1px solid var(--border);
+}
+
+.session-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text2);
+  cursor: pointer;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+  transition: all var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.btn-sm:hover { background: var(--surface); }
+.btn-sm.edit:hover { border-color: var(--accent3); color: var(--accent3); }
+.btn-sm.delete:hover { border-color: var(--red); color: var(--red); background: rgba(212,42,42,0.06); }
+
+.empty-state {
+  text-align: center;
+  padding: 64px 32px;
+  color: var(--text3);
+}
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+.empty-state p { font-size: 15px; }
+
+/* ===== EXPORT/IMPORT ===== */
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.tool-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tool-icon { font-size: 32px; }
+.tool-title { font-family: 'Roboto Slab', serif; font-weight: 700; font-size: 17px; }
+.tool-desc { font-size: 13px; color: var(--text2); line-height: 1.6; }
+
+#import-file { display: none; }
+
+/* ===== TOAST ===== */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1000;
+}
+
+.toast {
+  padding: 12px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  box-shadow: var(--shadow-lg);
+  animation: toastIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  max-width: 320px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toast.success { background: #2a9d4a; }
+.toast.error { background: #d42a2a; }
+.toast.info { background: #2a5bd4; }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(30px) scale(0.95); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes toastOut {
+  to { opacity: 0; transform: translateX(30px) scale(0.95); }
+}
+
+/* ===== SECTION HEADER ===== */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-family: 'Roboto Slab', serif;
+  font-weight: 800;
+  font-size: 20px;
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  header { padding: 16px 20px; }
+  .nav-tabs { padding: 12px 20px 0; }
+  main { padding: 20px; }
+  .form-grid { grid-template-columns: 1fr; }
+  .form-group.full { grid-column: 1; }
+  .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  .session-card { flex-wrap: wrap; }
+  .session-actions { width: 100%; justify-content: flex-end; }
+  .logo h1 { font-size: 17px; }
+  .streak-badge { display: none; }
+}
+
+@media (max-width: 480px) {
+  .metrics-grid { grid-template-columns: 1fr 1fr; }
+  .metric-value { font-size: 26px; }
+  .history-controls { flex-direction: column; }
+  .history-controls input { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-mark">SF</div>
+    <h1>Study<span>Flow</span></h1>
+  </div>
+  <div class="header-actions">
+    <div class="streak-badge" id="header-streak">🔥 0 dias</div>
+    <button class="btn-icon" id="theme-toggle" title="Alternar tema">🌙</button>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav class="nav-tabs">
+  <button class="nav-tab active" data-tab="dashboard">📊 Dashboard</button>
+  <button class="nav-tab" data-tab="registrar">✏️ Registrar</button>
+  <button class="nav-tab" data-tab="historico">📋 Histórico</button>
+  <button class="nav-tab" data-tab="ferramentas">🛠️ Ferramentas</button>
+</nav>
+
+<!-- MAIN -->
+<main>
+
+  <!-- ===== DASHBOARD ===== -->
+  <div class="tab-content active" id="tab-dashboard">
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-icon">📚</div>
+        <div class="metric-value" id="m-sessions">0</div>
+        <div class="metric-label">Sessões</div>
+        <div class="metric-sub">registradas</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">⏱️</div>
+        <div class="metric-value" id="m-hours">0h</div>
+        <div class="metric-label">Tempo Total</div>
+        <div class="metric-sub" id="m-hours-sub">estudado</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">🔥</div>
+        <div class="metric-value" id="m-streak">0</div>
+        <div class="metric-label">Streak</div>
+        <div class="metric-sub">dias consecutivos</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">📖</div>
+        <div class="metric-value" style="font-size:18px;line-height:1.3" id="m-topic">—</div>
+        <div class="metric-label">Último Tema</div>
+        <div class="metric-sub" id="m-topic-date">—</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">🎯</div>
+        <div class="metric-value" id="m-focus">—</div>
+        <div class="metric-label">Foco Médio</div>
+        <div class="focus-meter"><div class="focus-meter-fill" id="focus-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="chart-container">
+      <div class="chart-header">
+        <span class="chart-title">⏰ Horas estudadas — últimos 7 dias</span>
+      </div>
+      <div class="chart-wrapper" id="chart-bars">
+        <div class="chart-empty">Nenhuma sessão registrada ainda.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== REGISTRAR ===== -->
+  <div class="tab-content" id="tab-registrar">
+    <div class="form-card">
+      <div class="form-title">
+        <span id="form-title-text">Nova sessão de estudo</span>
+        <span class="edit-badge" id="edit-badge" style="display:none">Editando</span>
+      </div>
+      <input type="hidden" id="edit-id">
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Tema do estudo</label>
+          <input type="text" id="f-tema" placeholder="Ex: Cálculo I, React, Inglês..." required>
+        </div>
+        <div class="form-group">
+          <label>Data</label>
+          <input type="date" id="f-data">
+        </div>
+        <div class="form-group full">
+          <label>Descrição (o que você estudou?)</label>
+          <textarea id="f-desc" placeholder="Descreva o conteúdo estudado, anotações importantes..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Tempo de estudo</label>
+          <div class="time-inputs">
+            <div>
+              <input type="number" id="f-horas" placeholder="0" min="0" max="23">
+              <div class="time-label">horas</div>
+            </div>
+            <div>
+              <input type="number" id="f-minutos" placeholder="0" min="0" max="59">
+              <div class="time-label">minutos</div>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Nível de foco</label>
+          <div class="focus-selector">
+            <div>
+              <input type="radio" name="foco" id="foco-low" value="baixo" class="focus-option">
+              <label for="foco-low"><span class="focus-emoji">😴</span>Baixo</label>
+            </div>
+            <div>
+              <input type="radio" name="foco" id="foco-med" value="médio" class="focus-option" checked>
+              <label for="foco-med"><span class="focus-emoji">😊</span>Médio</label>
+            </div>
+            <div>
+              <input type="radio" name="foco" id="foco-high" value="alto" class="focus-option">
+              <label for="foco-high"><span class="focus-emoji">🚀</span>Alto</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn-primary" id="btn-save">💾 Salvar sessão</button>
+        <button class="btn-secondary" id="btn-cancel" style="display:none" onclick="cancelEdit()">✕ Cancelar edição</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== HISTÓRICO ===== -->
+  <div class="tab-content" id="tab-historico">
+    <div class="section-header">
+      <span class="section-title">Histórico de sessões</span>
+    </div>
+    <div class="history-controls">
+      <div class="search-input-wrapper" style="max-width:320px">
+        <input type="text" id="search-input" placeholder="Filtrar por tema...">
+      </div>
+      <select id="sort-select" style="max-width:200px">
+        <option value="newest">Mais recentes primeiro</option>
+        <option value="oldest">Mais antigas primeiro</option>
+        <option value="time-desc">Mais horas primeiro</option>
+        <option value="focus">Maior foco primeiro</option>
+      </select>
+    </div>
+    <div class="session-list" id="session-list">
+      <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <p>Nenhuma sessão registrada ainda.<br>Comece registrando seu primeiro estudo!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== FERRAMENTAS ===== -->
+  <div class="tab-content" id="tab-ferramentas">
+    <div class="section-header">
+      <span class="section-title">Ferramentas</span>
+    </div>
+    <div class="tools-grid">
+      <div class="tool-card">
+        <div class="tool-icon">📤</div>
+        <div class="tool-title">Exportar dados</div>
+        <div class="tool-desc">Salve todas as suas sessões em um arquivo JSON para backup ou migração.</div>
+        <button class="btn-primary" onclick="exportData()">Exportar JSON</button>
+      </div>
+      <div class="tool-card">
+        <div class="tool-icon">📥</div>
+        <div class="tool-title">Importar dados</div>
+        <div class="tool-desc">Restaure sessões a partir de um arquivo JSON exportado anteriormente.</div>
+        <button class="btn-primary" onclick="document.getElementById('import-file').click()">Importar JSON</button>
+        <input type="file" id="import-file" accept=".json" onchange="importData(event)">
+      </div>
+      <div class="tool-card">
+        <div class="tool-icon">🗑️</div>
+        <div class="tool-title">Limpar tudo</div>
+        <div class="tool-desc">Remove permanentemente todos os dados salvos. Esta ação não pode ser desfeita.</div>
+        <button class="btn-secondary" style="border-color: var(--red); color: var(--red)" onclick="clearAll()">Apagar tudo</button>
+      </div>
+      <div class="tool-card">
+        <div class="tool-icon">📊</div>
+        <div class="tool-title">Resumo</div>
+        <div class="tool-desc" id="tools-summary">Carregando resumo...</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- TOAST -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ===========================
+//  DATA MANAGEMENT
+// ===========================
+const STORAGE_KEY = 'studyflow_sessions';
+const THEME_KEY   = 'studyflow_theme';
+
+function getSessions() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch { return []; }
+}
+
+function saveSessions(sessions) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+}
+
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+// ===========================
+//  THEME
+// ===========================
+(function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY) || 'light';
+  applyTheme(saved);
+})();
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('theme-toggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem(THEME_KEY, theme);
+}
+
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  applyTheme(cur === 'dark' ? 'light' : 'dark');
+});
+
+// ===========================
+//  TABS
+// ===========================
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    if (tab.dataset.tab === 'historico') renderHistory();
+    if (tab.dataset.tab === 'ferramentas') renderToolsSummary();
+  });
+});
+
+// ===========================
+//  FORM SETUP
+// ===========================
+(function setDefaultDate() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('f-data').value = today;
+})();
+
+document.getElementById('btn-save').addEventListener('click', saveSession);
+
+function saveSession() {
+  const tema = document.getElementById('f-tema').value.trim();
+  const desc = document.getElementById('f-desc').value.trim();
+  const data = document.getElementById('f-data').value;
+  const horas = parseInt(document.getElementById('f-horas').value) || 0;
+  const mins  = parseInt(document.getElementById('f-minutos').value) || 0;
+  const foco  = document.querySelector('input[name="foco"]:checked')?.value || 'médio';
+  const editId = document.getElementById('edit-id').value;
+
+  if (!tema) { toast('⚠️ Informe o tema do estudo.', 'error'); return; }
+  if (!data) { toast('⚠️ Selecione a data.', 'error'); return; }
+  if (horas === 0 && mins === 0) { toast('⚠️ Informe o tempo de estudo.', 'error'); return; }
+
+  const totalMinutes = horas * 60 + mins;
+  const session = { tema, desc, data, totalMinutes, foco };
+
+  const sessions = getSessions();
+
+  if (editId) {
+    const idx = sessions.findIndex(s => s.id === editId);
+    if (idx !== -1) { sessions[idx] = { ...sessions[idx], ...session }; }
+    toast('✅ Sessão atualizada!', 'success');
+    cancelEdit();
+  } else {
+    session.id = genId();
+    sessions.push(session);
+    toast('🎉 Sessão salva com sucesso!', 'success');
+  }
+
+  saveSessions(sessions);
+  resetForm();
+  updateDashboard();
+}
+
+function resetForm() {
+  document.getElementById('f-tema').value = '';
+  document.getElementById('f-desc').value = '';
+  document.getElementById('f-horas').value = '';
+  document.getElementById('f-minutos').value = '';
+  document.querySelector('input[name="foco"][value="médio"]').checked = true;
+  document.getElementById('f-data').value = new Date().toISOString().split('T')[0];
+}
+
+function editSession(id) {
+  const s = getSessions().find(s => s.id === id);
+  if (!s) return;
+  document.getElementById('f-tema').value = s.tema;
+  document.getElementById('f-desc').value = s.desc;
+  document.getElementById('f-data').value = s.data;
+  document.getElementById('f-horas').value = Math.floor(s.totalMinutes / 60);
+  document.getElementById('f-minutos').value = s.totalMinutes % 60;
+  const rb = document.querySelector(`input[name="foco"][value="${s.foco}"]`);
+  if (rb) rb.checked = true;
+  document.getElementById('edit-id').value = id;
+  document.getElementById('form-title-text').textContent = 'Editar sessão';
+  document.getElementById('edit-badge').style.display = 'inline-block';
+  document.getElementById('btn-cancel').style.display = 'inline-flex';
+  // Switch to form tab
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelector('[data-tab="registrar"]').classList.add('active');
+  document.getElementById('tab-registrar').classList.add('active');
+  document.getElementById('f-tema').focus();
+  toast('✏️ Sessão carregada para edição.', 'info');
+}
+
+function cancelEdit() {
+  document.getElementById('edit-id').value = '';
+  document.getElementById('form-title-text').textContent = 'Nova sessão de estudo';
+  document.getElementById('edit-badge').style.display = 'none';
+  document.getElementById('btn-cancel').style.display = 'none';
+  resetForm();
+}
+
+function deleteSession(id) {
+  if (!confirm('Excluir esta sessão?')) return;
+  let sessions = getSessions().filter(s => s.id !== id);
+  saveSessions(sessions);
+  renderHistory();
+  updateDashboard();
+  toast('🗑️ Sessão removida.', 'info');
+}
+
+// ===========================
+//  DASHBOARD
+// ===========================
+function updateDashboard() {
+  const sessions = getSessions();
+  const total = sessions.length;
+  const totalMins = sessions.reduce((a, s) => a + (s.totalMinutes || 0), 0);
+  const hours = Math.floor(totalMins / 60);
+  const mins  = totalMins % 60;
+
+  document.getElementById('m-sessions').textContent = total;
+  document.getElementById('m-hours').textContent = hours + 'h';
+  document.getElementById('m-hours-sub').textContent = mins > 0 ? `${hours}h ${mins}min estudados` : `${hours} horas estudadas`;
+
+  // Streak
+  const streak = calcStreak(sessions);
+  document.getElementById('m-streak').textContent = streak;
+  document.getElementById('header-streak').textContent = `🔥 ${streak} ${streak === 1 ? 'dia' : 'dias'}`;
+
+  // Last topic
+  const sorted = [...sessions].sort((a, b) => b.data.localeCompare(a.data));
+  if (sorted.length > 0) {
+    document.getElementById('m-topic').textContent = sorted[0].tema;
+    document.getElementById('m-topic-date').textContent = formatDate(sorted[0].data);
+  } else {
+    document.getElementById('m-topic').textContent = '—';
+    document.getElementById('m-topic-date').textContent = '—';
+  }
+
+  // Focus average
+  const focusMap = { baixo: 1, médio: 2, alto: 3 };
+  const focusLabels = { 1: 'Baixo', 2: 'Médio', 3: 'Alto' };
+  if (sessions.length > 0) {
+    const avg = sessions.reduce((a, s) => a + (focusMap[s.foco] || 2), 0) / sessions.length;
+    const avgRounded = Math.round(avg * 10) / 10;
+    document.getElementById('m-focus').textContent = avgRounded.toFixed(1) + '/3';
+    document.getElementById('focus-bar').style.width = ((avg / 3) * 100) + '%';
+  } else {
+    document.getElementById('m-focus').textContent = '—';
+    document.getElementById('focus-bar').style.width = '0%';
+  }
+
+  renderChart(sessions);
+}
+
+function calcStreak(sessions) {
+  if (!sessions.length) return 0;
+  const days = [...new Set(sessions.map(s => s.data))].sort((a, b) => b.localeCompare(a));
+  if (!days.length) return 0;
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  if (days[0] !== today && days[0] !== yesterday) return 0;
+  let streak = 1;
+  for (let i = 0; i < days.length - 1; i++) {
+    const diff = (new Date(days[i]) - new Date(days[i + 1])) / 86400000;
+    if (diff === 1) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function renderChart(sessions) {
+  const container = document.getElementById('chart-bars');
+  if (!sessions.length) {
+    container.innerHTML = '<div class="chart-empty">Nenhuma sessão registrada ainda.</div>';
+    return;
+  }
+
+  // Last 7 days
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000);
+    days.push(d.toISOString().split('T')[0]);
+  }
+
+  const byDay = {};
+  days.forEach(d => byDay[d] = 0);
+  sessions.forEach(s => {
+    if (byDay[s.data] !== undefined) byDay[s.data] += s.totalMinutes || 0;
+  });
+
+  const maxMins = Math.max(...Object.values(byDay), 1);
+
+  container.innerHTML = days.map(d => {
+    const mins = byDay[d];
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    const label = h > 0 ? `${h}h${m > 0 ? m + 'm' : ''}` : (m > 0 ? `${m}m` : '0');
+    const pct = (mins / maxMins) * 100;
+    const day = new Date(d + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+    return `<div class="bar-group">
+      <div class="bar" style="height:${Math.max(pct, mins > 0 ? 8 : 2)}%;min-height:${mins>0?4:2}px" data-tip="${label}"></div>
+      <div class="bar-label">${day}</div>
+    </div>`;
+  }).join('');
+}
+
+// ===========================
+//  HISTORY
+// ===========================
+document.getElementById('search-input').addEventListener('input', renderHistory);
+document.getElementById('sort-select').addEventListener('change', renderHistory);
+
+function renderHistory() {
+  const filter = document.getElementById('search-input').value.toLowerCase();
+  const sort   = document.getElementById('sort-select').value;
+  const focusOrder = { alto: 3, médio: 2, baixo: 1 };
+
+  let sessions = getSessions().filter(s =>
+    !filter || s.tema.toLowerCase().includes(filter) || (s.desc || '').toLowerCase().includes(filter)
+  );
+
+  sessions.sort((a, b) => {
+    if (sort === 'newest')    return b.data.localeCompare(a.data);
+    if (sort === 'oldest')    return a.data.localeCompare(b.data);
+    if (sort === 'time-desc') return (b.totalMinutes||0) - (a.totalMinutes||0);
+    if (sort === 'focus')     return (focusOrder[b.foco]||2) - (focusOrder[a.foco]||2);
+    return 0;
+  });
+
+  const list = document.getElementById('session-list');
+  if (!sessions.length) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">${filter ? '🔍' : '📭'}</div>
+      <p>${filter ? 'Nenhuma sessão encontrada com esse filtro.' : 'Nenhuma sessão registrada ainda.<br>Comece registrando seu primeiro estudo!'}</p>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = sessions.map(s => {
+    const h = Math.floor((s.totalMinutes||0) / 60);
+    const m = (s.totalMinutes||0) % 60;
+    const timeStr = h > 0 ? `${h}h${m > 0 ? ' ' + m + 'min' : ''}` : `${m}min`;
+    const focusEmoji = { baixo: '😴', médio: '😊', alto: '🚀' };
+    return `<div class="session-card" id="card-${s.id}">
+      <div class="session-focus-dot focus-${s.foco.replace('é','e')}"></div>
+      <div class="session-body">
+        <div class="session-theme">${escHtml(s.tema)}</div>
+        ${s.desc ? `<div class="session-desc">${escHtml(s.desc)}</div>` : ''}
+        <div class="session-meta">
+          <span class="meta-tag">📅 ${formatDate(s.data)}</span>
+          <span class="meta-tag">⏱️ ${timeStr}</span>
+          <span class="meta-tag">${focusEmoji[s.foco] || '😊'} Foco ${s.foco}</span>
+        </div>
+      </div>
+      <div class="session-actions">
+        <button class="btn-sm edit" onclick="editSession('${s.id}')">✏️ Editar</button>
+        <button class="btn-sm delete" onclick="deleteSession('${s.id}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===========================
+//  TOOLS
+// ===========================
+function renderToolsSummary() {
+  const sessions = getSessions();
+  const totalMins = sessions.reduce((a, s) => a + (s.totalMinutes || 0), 0);
+  const temas = [...new Set(sessions.map(s => s.tema))];
+  document.getElementById('tools-summary').innerHTML =
+    `${sessions.length} sessões registradas<br>` +
+    `${Math.floor(totalMins/60)}h ${totalMins%60}min de estudo total<br>` +
+    `${temas.length} tema(s) diferentes`;
+}
+
+function exportData() {
+  const sessions = getSessions();
+  if (!sessions.length) { toast('📭 Nenhuma sessão para exportar.', 'error'); return; }
+  const blob = new Blob([JSON.stringify(sessions, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `studyflow_backup_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  toast('📤 Dados exportados com sucesso!', 'success');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) throw new Error();
+      const existing = getSessions();
+      const merged = [...existing];
+      let added = 0;
+      data.forEach(s => {
+        if (s.id && !merged.find(m => m.id === s.id)) {
+          merged.push(s);
+          added++;
+        }
+      });
+      saveSessions(merged);
+      updateDashboard();
+      renderToolsSummary();
+      toast(`📥 ${added} sessão(ões) importada(s)!`, 'success');
+    } catch {
+      toast('❌ Arquivo inválido.', 'error');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function clearAll() {
+  if (!confirm('⚠️ Apagar TODOS os dados? Esta ação não pode ser desfeita.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  updateDashboard();
+  renderHistory();
+  renderToolsSummary();
+  toast('🗑️ Todos os dados foram removidos.', 'info');
+}
+
+// ===========================
+//  TOAST
+// ===========================
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => {
+    el.style.animation = 'toastOut 0.3s ease forwards';
+    setTimeout(() => el.remove(), 300);
+  }, 3000);
+}
+
+// ===========================
+//  HELPERS
+// ===========================
+function formatDate(dateStr) {
+  if (!dateStr) return '—';
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ===========================
+//  INIT
+// ===========================
+updateDashboard();
+</script>
+</body>
+</html>
