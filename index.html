@@ -868,21 +868,67 @@ textarea { resize: vertical; min-height: 90px; }
 .empty-state p { font-size: 15px; }
 
 /* LINK FIELD */
-.link-input-wrapper {
-  position: relative;
+.links-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.link-input-wrapper::before {
+.link-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  animation: slideIn 0.2s ease;
+}
+.link-row input {
+  flex: 1;
+  padding-left: 34px;
+}
+.link-row-wrapper {
+  position: relative;
+  flex: 1;
+}
+.link-row-wrapper::before {
   content: '🔗';
   position: absolute;
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 14px;
+  font-size: 13px;
   pointer-events: none;
+  z-index: 1;
 }
-.link-input-wrapper input {
-  padding-left: 34px;
+.btn-remove-link {
+  width: 32px; height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--text3);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: all var(--transition);
 }
+.btn-remove-link:hover { border-color: var(--red); color: var(--red); background: rgba(212,42,42,0.06); }
+
+.btn-add-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text3);
+  font-family: 'Roboto', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  width: fit-content;
+}
+.btn-add-link:hover { border-color: var(--accent3); color: var(--accent3); background: rgba(42,91,212,0.04); }
+
 .meta-tag.link-tag {
   color: var(--accent3);
   border-color: rgba(42,91,212,0.3);
@@ -892,14 +938,12 @@ textarea { resize: vertical; min-height: 90px; }
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  max-width: 200px;
+  max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.meta-tag.link-tag:hover {
-  background: rgba(42,91,212,0.12);
-}
+.meta-tag.link-tag:hover { background: rgba(42,91,212,0.14); }
 
 /* TOOLS */
 .tools-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
@@ -1165,10 +1209,13 @@ textarea { resize: vertical; min-height: 90px; }
             <textarea id="f-desc" placeholder="Descreva o conteúdo estudado..."></textarea>
           </div>
           <div class="form-group full">
-            <label>Link de referência <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">(opcional)</span></label>
-            <div class="link-input-wrapper">
-              <input type="url" id="f-link" placeholder="https://site.com, YouTube, Notion...">
+            <label>Links de referência <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">(opcional)</span></label>
+            <div class="links-section" id="links-container">
+              <!-- linhas de link injetadas por JS -->
             </div>
+            <button type="button" class="btn-add-link" onclick="addLinkRow()" id="btn-add-link">
+              + Adicionar link
+            </button>
           </div>
           <div class="form-group">
             <label>Tempo de estudo</label>
@@ -1588,16 +1635,61 @@ function switchTab(name) {
 }
 
 // ════════════════════════════════════════════
+//  MULTI-LINK HELPERS
+// ════════════════════════════════════════════
+function addLinkRow(value = '') {
+  const container = document.getElementById('links-container');
+  const idx = container.children.length;
+  const row = document.createElement('div');
+  row.className = 'link-row';
+  row.innerHTML = `
+    <div class="link-row-wrapper">
+      <input type="url" class="link-input" placeholder="https://youtube.com, notion.so..." value="${escHtml(value)}">
+    </div>
+    <button type="button" class="btn-remove-link" onclick="removeLinkRow(this)" title="Remover link">✕</button>
+  `;
+  container.appendChild(row);
+  row.querySelector('input').focus();
+  updateAddLinkBtn();
+}
+
+function removeLinkRow(btn) {
+  btn.closest('.link-row').remove();
+  updateAddLinkBtn();
+}
+
+function updateAddLinkBtn() {
+  const count = document.getElementById('links-container').children.length;
+  const btn   = document.getElementById('btn-add-link');
+  // Limite de 5 links por sessão
+  btn.style.display = count >= 5 ? 'none' : 'flex';
+  btn.textContent   = count === 0 ? '+ Adicionar link' : '+ Mais um link';
+}
+
+function getLinksFromForm() {
+  return [...document.querySelectorAll('#links-container .link-input')]
+    .map(i => i.value.trim())
+    .filter(v => v.length > 0);
+}
+
+function setLinksInForm(links) {
+  document.getElementById('links-container').innerHTML = '';
+  links.forEach(l => addLinkRow(l));
+  updateAddLinkBtn();
+}
+
+// ════════════════════════════════════════════
 //  FORM
 // ════════════════════════════════════════════
 (function setDefaultDate() {
   document.getElementById('f-data').value = new Date().toISOString().split('T')[0];
+  updateAddLinkBtn();
 })();
 
 async function saveSession() {
   const tema   = document.getElementById('f-tema').value.trim();
   const desc   = document.getElementById('f-desc').value.trim();
-  const link   = document.getElementById('f-link').value.trim();
+  const links  = getLinksFromForm();
   const data   = document.getElementById('f-data').value;
   const horas  = parseInt(document.getElementById('f-horas').value)   || 0;
   const mins   = parseInt(document.getElementById('f-minutos').value) || 0;
@@ -1611,7 +1703,7 @@ async function saveSession() {
   const btn = document.getElementById('btn-save');
   btn.disabled = true;
 
-  const payload = { tema, desc, link, data, totalMinutes: horas * 60 + mins, foco };
+  const payload = { tema, desc, links, data, totalMinutes: horas * 60 + mins, foco };
   const uid = window.currentUser.uid;
   const { db, doc, addDoc, setDoc, collection, serverTimestamp } = window._fb;
 
@@ -1638,11 +1730,11 @@ async function saveSession() {
 function resetForm() {
   document.getElementById('f-tema').value    = '';
   document.getElementById('f-desc').value    = '';
-  document.getElementById('f-link').value    = '';
   document.getElementById('f-horas').value   = '';
   document.getElementById('f-minutos').value = '';
   document.querySelector('input[name="foco"][value="médio"]').checked = true;
   document.getElementById('f-data').value    = new Date().toISOString().split('T')[0];
+  setLinksInForm([]);
 }
 
 function editSession(id) {
@@ -1650,8 +1742,8 @@ function editSession(id) {
   if (!s) return;
   document.getElementById('f-tema').value    = s.tema;
   document.getElementById('f-desc').value    = s.desc || '';
-  document.getElementById('f-link').value    = s.link || '';
   document.getElementById('f-data').value    = s.data;
+  setLinksInForm(s.links || (s.link ? [s.link] : []));
   document.getElementById('f-horas').value   = Math.floor(s.totalMinutes / 60);
   document.getElementById('f-minutos').value = s.totalMinutes % 60;
   const rb = document.querySelector(`input[name="foco"][value="${s.foco}"]`);
@@ -1815,6 +1907,7 @@ function renderHistory() {
           <span class="meta-tag">⏱️ ${timeStr}</span>
           <span class="meta-tag">${focusEmoji[s.foco] || '😊'} Foco ${s.foco}</span>
           ${s.link ? `<a href="${escHtml(s.link)}" target="_blank" rel="noopener" class="meta-tag link-tag">🔗 ${escHtml(linkLabel(s.link))}</a>` : ''}
+          ${(s.links && s.links.length) ? s.links.map(l => `<a href="${escHtml(l)}" target="_blank" rel="noopener" class="meta-tag link-tag">🔗 ${escHtml(linkLabel(l))}</a>`).join('') : ''}
         </div>
       </div>
       <div class="session-actions">
